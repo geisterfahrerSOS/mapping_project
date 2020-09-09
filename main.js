@@ -5,7 +5,6 @@ class Node {
         this.type = type;
         this.show = show;
         this.id = id;
-        this.wP = wayPoint;
     }
 
 }
@@ -48,28 +47,37 @@ class Button {
     }
 }
 class Way {
-    constructor(display, type, startNode) {
+    constructor(name, display, type) {
         this.s = display;
+        this.n = name;
         this.t = type;
-        this.sN = startNode;
-        this.nodeList = [];
-        this.nodeList.push(startNode);
-        this.color = color(parseInt(random(0, 255)), parseInt(random(0, 255)), parseInt(random(0, 255)));
+        this.idList = [];
+        this.color = color(random(100, 255), random(100, 255), random(100, 255));
     }
-    addNode(nodeObj) {
+    addNode(nodeObj, end) {
         if (nodeObj.type === "point") {
-            this.nodeList.push(nodeObj);
+            if (end) {
+                this.idList.push(nodeObj.id);
+            } else {
+                this.idList.splice(0, 0, nodeObj.id);
+            }
+
         } else {
-            alert("The Node type " + nodeObj.type + " cannot be used in a way");
+            console.log("The Node type " + nodeObj.type + " cannot be used in a way");
         }
     }
     removeNode() {
 
     }
     showWay() {
-        for (let i = 0; i < this.nodeList.length - 1; i++) {
-            fill(this.color);
-            line(this.nodeList[i].posX, this.nodeList[i].posY, this.nodeList[i + 1].posX, this.nodeList[i + 1].posY)
+        for (let i = 0; i < this.idList.length - 1; i++) {
+            push();
+            stroke(this.color);
+            strokeWeight(3)
+            let id = nodes.findIndex(item => item.id === this.idList[i]);
+            let nextId = nodes.findIndex(item => item.id === this.idList[i + 1]);
+            line(nodes[id].posX, nodes[id].posY, nodes[nextId].posX, nodes[nextId].posY);
+            pop();
         }
     }
 }
@@ -83,6 +91,9 @@ let nodeTypeValue = 0;
 let selectedNode = null;
 let buttons = [];
 let ways = [];
+let placeHolder;
+let input;
+let button;
 
 buttons.push(new Button(false, 230, 20, 60, 20, closeMenu, [200, 200, 200], "Close"));
 buttons.push(new Button(false, 230, 60, 70, 20, deleteNode, [200, 200, 200], "Delete"));
@@ -169,7 +180,17 @@ function showMenuFunc() {
     text("type:  " + nodes[selectedNode].type, 20, 100);
     text("X:  " + nodes[selectedNode].posX, 20, 140);
     text("Y:  " + nodes[selectedNode].posY, 120, 140);
-    text("way point:  " + nodes[selectedNode].wP, 20, 180);
+    let wayMatched = null;
+    for (let e = 0; e < ways.length; e++) {
+        if (ways[e].idList.find(item => item === nodes[selectedNode].id) != null) {
+            wayMatched = e;
+            break;
+        }
+    }
+    if (wayMatched != null) {
+        text("Name:  " + ways[wayMatched].n, 20, 180);
+        text("Typ:  " + ways[wayMatched].t, 20, 220);
+    }
 }
 
 function clipping(posX, posY, node2, value) {
@@ -184,14 +205,14 @@ function deleteNode() {
     console.log("node being deleted");
     showMenu = false;
     for (let count of ways) {
-        let idInWay = count.nodeList.findIndex(item => item.id === nodes[selectedNode].id);
-        console.log("id delete" + idInWay);
+        let idInWay = count.idList.findIndex(item => item === nodes[selectedNode].id);
+        console.log("id delete:  " + idInWay);
         if (idInWay >= 0) {
-            count.nodeList.splice(idInWay, 1);
+            count.idList.splice(idInWay, 1); //removes node reference in ways object
         }
     }
     console.log(ways);
-    loseIds.push(nodes[selectedNode].id); //only if removed
+    loseIds.push(nodes[selectedNode].id); //adds removed id to loseId Array for future use
     nodes.splice(selectedNode, 1);
 
 
@@ -201,23 +222,52 @@ function mouseClicked() {
     let ok = false; //has node been clicked?
     for (let i = 0; i < nodes.length; i++) {
         if (clipping(mouseX, mouseY, nodes[i], 12)) { //entering node menu
-            console.log(keyCode);
-            if (keyIsPressed && keyCode === 16) {
-                if (nodes[selectedNode].wP) {
+            if (keyIsPressed && keyCode === 16 && selectedNode !== null) { //entering ways menu
+                let wayMatched = null;
+                for (let e = 0; e < ways.length; e++) {
+                    if (ways[e].idList.find(item => item === nodes[selectedNode].id) != null) {
+                        wayMatched = e;
+                        break;
+                    }
+                }
+                if (wayMatched != null) {
                     console.log("adding node");
-                    if (nodes[i].wP) {
-                        alert("The node is already being used in another way");
+                    //node connecting
+                    let wayMatched2 = null;
+                    for (let e = 0; e < ways.length; e++) {
+                        if (ways[e].idList.find(item => item === nodes[i].id) != null) {
+                            wayMatched2 = e;
+                            break;
+                        }
+                    }
+                    if (wayMatched2 != null) { //joining two ways together
+                        if (ways[wayMatched2].idList.findIndex(item => item === nodes[i].id) === ways[wayMatched2].idList.length - 1) {
+                            ways[wayMatched].idList = ways[wayMatched].idList.concat(ways[wayMatched2].idList.reverse());
+                        } else {
+                            ways[wayMatched].idList = ways[wayMatched].idList.concat(ways[wayMatched2].idList);
+                        }
+                        ways.splice(wayMatched2, 1);
                     } else {
-                        ways[ways.length - 1].addNode(nodes[i]);
-                        nodes[i].wP = true;
+                        if (ways[wayMatched].idList.findIndex(item => item === nodes[selectedNode].id) === 0) {
+                            console.log("adding node at start");
+                            ways[wayMatched].addNode(nodes[i], false);
+                        } else if (ways[wayMatched].idList.findIndex(item => item === nodes[selectedNode].id) === ways[wayMatched].idList.length - 1) {
+                            console.log("adding node at end");
+                            ways[wayMatched].addNode(nodes[i], true);
+                        } else {
+                            // alert("pleade add nodes from the ends of a way");
+                            console.log("pleade add nodes from the ends of a way");
+                        }
                     }
 
                 } else {
                     console.log("creating ways obj");
-                    ways.push(new Way(true, "street", nodes[selectedNode]));
-                    nodes[selectedNode].wP = true;
-                    ways[ways.length - 1].addNode(nodes[i]);
-                    nodes[i].wP = true;
+                    input = createInput();
+                    input.position(100, 100);
+                    button = createButton("submit");
+                    button.position(240, 100);
+                    button.mousePressed(wayErstellen);
+                    placeHolder = i;
                 }
                 ok = true;
                 console.log(ways);
@@ -264,6 +314,13 @@ function mouseClicked() {
     }
 }
 
+function wayErstellen() {
+    ways.push(new Way(input.value(), true, "street"));
+    ways[ways.length - 1].addNode(nodes[selectedNode], true);
+    ways[ways.length - 1].addNode(nodes[placeHolder], true);
+    input = null;
+}
+
 function keyPressed() {
     if (keyCode > 48) {
         nodeTypeValue = (keyCode - 49) % nodeTypes.length;
@@ -286,7 +343,8 @@ function keyPressed() {
         }
         saveTable(table, "table", "html"); //make better file for saving node data
     }
-    if (showMenu) {
+    console.log(keyCode);
+    if (showMenu && keyCode === 46) {
         deleteNode();
     }
 }
