@@ -6,6 +6,7 @@ class Node {
         this.show = show;
         this.id = id;
         this.lN = [];
+        this.costs = Infinity;
     }
 
 }
@@ -87,9 +88,16 @@ class Pathfinder {
         this.name = name;
         this.start = start;
         this.stop = 0;
+        this.visited = [start];
+        this.unvisited = nodes.map(item => item.id);
+        this.currentNode = start;
+        nodes.find(item => item.id === start).costs = 0;
     }
     addStop(sp) {
         this.stop = sp;
+    }
+    findPath() {
+        nodes.find(item => item.id === this.currentNode).lN.forEach()
     }
 }
 let img;
@@ -389,7 +397,10 @@ function keyPressed() {
         path = new Pathfinder("navi", nodes[selectedNode].id);
     }
     if (showMenu && keyCode === 83 && path != null) {
-        path.addStop(nodes[selectedNode].id)
+        path.addStop(nodes[selectedNode].id);
+    }
+    if (showMenu && keyCode === 67 && path != null && path.stop != null) {
+
     }
     // console.log(keyCode);
 }
