@@ -1,10 +1,11 @@
 class Node {
-    constructor(posX, posY, type, show, id, wayPoint) {
+    constructor(posX, posY, type, show, id) {
         this.posX = posX;
         this.posY = posY;
         this.type = type;
         this.show = show;
         this.id = id;
+        this.lN = [];
     }
 
 }
@@ -97,6 +98,7 @@ let button;
 
 buttons.push(new Button(false, 230, 20, 60, 20, closeMenu, [200, 200, 200], "Close"));
 buttons.push(new Button(false, 230, 60, 70, 20, deleteNode, [200, 200, 200], "Delete"));
+buttons.push(new Button(false, 60, 260, 60, 20, deleteWay, [200, 200, 200], "Delete"));
 
 
 function preload() {
@@ -153,9 +155,12 @@ function draw() {
     for (let count of buttons) {
         count.show();
     }
-    for (let count of ways) {
-        count.showWay();
-    }
+    ways.forEach((value, index) => {
+        value.showWay();
+        if (value.idList.length === 1) {
+            ways.splice(index, 1);
+        }
+    });
     if (showMenu) {
         showMenuFunc();
     } else {
@@ -180,16 +185,21 @@ function showMenuFunc() {
     text("type:  " + nodes[selectedNode].type, 20, 100);
     text("X:  " + nodes[selectedNode].posX, 20, 140);
     text("Y:  " + nodes[selectedNode].posY, 120, 140);
-    let wayMatched = null;
+    let wayMatched = [];
     for (let e = 0; e < ways.length; e++) {
         if (ways[e].idList.find(item => item === nodes[selectedNode].id) != null) {
-            wayMatched = e;
-            break;
+            wayMatched.push(e);
         }
     }
-    if (wayMatched != null) {
-        text("Name:  " + ways[wayMatched].n, 20, 180);
-        text("Typ:  " + ways[wayMatched].t, 20, 220);
+    if (wayMatched[0] != null) {
+        buttons[2].s = true;
+        rect()
+        wayMatched.forEach((value, index) => {
+            text("Name:  " + ways[value].n, 20, 180 + index * 80);
+            text("Typ:  " + ways[value].t, 20, 220 + index * 80);
+        });
+    } else {
+        buttons[2].s = false;
     }
 }
 
@@ -211,18 +221,28 @@ function deleteNode() {
             count.idList.splice(idInWay, 1); //removes node reference in ways object
         }
     }
-    console.log(ways);
     loseIds.push(nodes[selectedNode].id); //adds removed id to loseId Array for future use
     nodes.splice(selectedNode, 1);
+}
 
-
+function deleteWay() {
+    let wayMatched = [];
+    for (let e = 0; e < ways.length; e++) {
+        if (ways[e].idList.find(item => item === nodes[selectedNode].id) != null) {
+            wayMatched.push(e);
+        }
+    }
+    for (let count of wayMatched) {
+        ways.splice(count, 1);
+    }
 }
 
 function mouseClicked() {
+    console.log(ways);
     let ok = false; //has node been clicked?
     for (let i = 0; i < nodes.length; i++) {
         if (clipping(mouseX, mouseY, nodes[i], 12)) { //entering node menu
-            if (keyIsPressed && keyCode === 16 && selectedNode !== null) { //entering ways menu
+            if (keyIsPressed && keyCode === 16 && selectedNode !== null && selectedNode !== i) { //entering ways menu
                 let wayMatched = null;
                 for (let e = 0; e < ways.length; e++) {
                     if (ways[e].idList.find(item => item === nodes[selectedNode].id) != null) {
@@ -240,37 +260,45 @@ function mouseClicked() {
                             break;
                         }
                     }
-                    if (wayMatched2 != null) { //joining two ways together
-                        if (ways[wayMatched2].idList.findIndex(item => item === nodes[i].id) === ways[wayMatched2].idList.length - 1) {
-                            ways[wayMatched].idList = ways[wayMatched].idList.concat(ways[wayMatched2].idList.reverse());
-                        } else {
-                            ways[wayMatched].idList = ways[wayMatched].idList.concat(ways[wayMatched2].idList);
-                        }
-                        ways.splice(wayMatched2, 1);
+                    // if (wayMatched2 != null) { //joining two ways together
+                    //     if (ways[wayMatched2].idList.findIndex(item => item === nodes[i].id) === ways[wayMatched2].idList.length - 1) {
+                    //         ways[wayMatched].idList = ways[wayMatched].idList.concat(ways[wayMatched2].idList.reverse());
+                    //     } else {
+                    //         ways[wayMatched].idList = ways[wayMatched].idList.concat(ways[wayMatched2].idList);
+                    //     }
+                    //     ways.splice(wayMatched2, 1);
+                    // } else {
+                    if (ways[wayMatched].idList.findIndex(item => item === nodes[selectedNode].id) === 0) {
+                        console.log("adding node at start");
+                        ways[wayMatched].addNode(nodes[i], false);
+                    } else if (ways[wayMatched].idList.findIndex(item => item === nodes[selectedNode].id) === ways[wayMatched].idList.length - 1) {
+                        console.log("adding node at end");
+                        ways[wayMatched].addNode(nodes[i], true);
                     } else {
-                        if (ways[wayMatched].idList.findIndex(item => item === nodes[selectedNode].id) === 0) {
-                            console.log("adding node at start");
-                            ways[wayMatched].addNode(nodes[i], false);
-                        } else if (ways[wayMatched].idList.findIndex(item => item === nodes[selectedNode].id) === ways[wayMatched].idList.length - 1) {
-                            console.log("adding node at end");
-                            ways[wayMatched].addNode(nodes[i], true);
-                        } else {
-                            // alert("pleade add nodes from the ends of a way");
-                            console.log("pleade add nodes from the ends of a way");
-                        }
+                        // alert("pleade add nodes from the ends of a way");
+                        console.log("pleade add nodes from the ends of a way");
                     }
+                    // }
 
                 } else {
                     console.log("creating ways obj");
                     input = createInput();
-                    input.position(100, 100);
+                    input.position(200, 50);
                     button = createButton("submit");
-                    button.position(240, 100);
+                    button.position(340, 50);
                     button.mousePressed(wayErstellen);
                     placeHolder = i;
                 }
                 ok = true;
-                console.log(ways);
+            } else if (keyIsPressed && keyCode === 17 && selectedNode !== null) {
+                console.log("creating ways obj new");
+                input = createInput();
+                input.position(200, 50);
+                button = createButton("submit");
+                button.position(340, 50);
+                button.mousePressed(wayErstellen);
+                placeHolder = i;
+                ok = true;
             } else {
                 showMenu = true;
                 if (selectedNode === i) {
@@ -281,7 +309,7 @@ function mouseClicked() {
                 }
                 ok = true;
             }
-
+            updateLN();
         }
     }
     if (!ok) { //new node created
@@ -311,6 +339,7 @@ function mouseClicked() {
     if (showMenu) {
         buttons[0].clickChecker();
         buttons[1].clickChecker();
+        buttons[2].clickChecker();
     }
 }
 
@@ -318,11 +347,13 @@ function wayErstellen() {
     ways.push(new Way(input.value(), true, "street"));
     ways[ways.length - 1].addNode(nodes[selectedNode], true);
     ways[ways.length - 1].addNode(nodes[placeHolder], true);
-    input = null;
+    input.remove();
+    button.remove();
+    updateLN();
 }
 
 function keyPressed() {
-    if (keyCode > 48) {
+    if (keyCode > 48 && keyCode < 59) {
         nodeTypeValue = (keyCode - 49) % nodeTypes.length;
     }
     if (keyCode === 13) {
@@ -335,16 +366,55 @@ function keyPressed() {
         let rows = [];
         for (let i = 0; i < nodes.length; i++) {
             rows.push(table.addRow());
-            rows[rows.length - 1].setNum("id", nodes[i].id);
             rows[rows.length - 1].setString("type", nodes[i].type);
             rows[rows.length - 1].setString("show", nodes[i].show);
             rows[rows.length - 1].setNum("posX", nodes[i].posX);
             rows[rows.length - 1].setNum("posY", nodes[i].posY);
         }
-        saveTable(table, "table", "html"); //make better file for saving node data
+
+        let table2 = new p5.Table();
+        for (let i = 0; i < 100; i++) {
+            table2.addColumn("Node #" + i);
+        }
+        let rows2 = [];
+        for (let count of ways) {
+            rows2.push(table2.addRow());
+            for (let i = 0; i < 100; i++) {
+                rows2[rows2.length - 1].setNum("Node #" + i, -1);
+            }
+            count.idList.forEach((value, index) => {
+                rows2[rows2.length - 1].setNum("Node #" + index, value);
+            })
+        }
+
+        saveTable(table, "table", "csv"); //html doesn't work why? String converson error
+        saveTable(table2, "table2", "csv");
     }
-    console.log(keyCode);
     if (showMenu && keyCode === 46) {
         deleteNode();
     }
+}
+
+function updateLN() {
+    nodes.forEach(item => {
+        item.lN = [];
+        let wayMatched = [];
+        for (let e = 0; e < ways.length; e++) {
+            if (ways[e].idList.find(value => value === item.id) != null) {
+                wayMatched.push(e);
+            }
+        }
+        for (let count of wayMatched) {
+            let itemPos = ways[count].idList.findIndex(value => value === item.id);
+            if (itemPos === 0) {
+                item.lN.push(ways[count].idList[itemPos + 1]);
+            } else if (itemPos > 0 && itemPos < ways[count].idList.length - 1) {
+                item.lN.push(ways[count].idList[itemPos - 1]);
+                item.lN.push(ways[count].idList[itemPos + 1]);
+            } else if (itemPos === ways[count].idList[ways[count].idList.length - 1]) {
+                item.lN.push(ways[count].idList[itemPos - 1]);
+            }
+        }
+    })
+    console.log(nodes);
 }
