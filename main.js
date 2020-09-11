@@ -82,6 +82,16 @@ class Way {
         }
     }
 }
+class Pathfinder {
+    constructor(name, start) {
+        this.name = name;
+        this.start = start;
+        this.stop = 0;
+    }
+    addStop(sp) {
+        this.stop = sp;
+    }
+}
 let img;
 let nodes = [];
 let loseIds = [];
@@ -95,6 +105,7 @@ let ways = [];
 let placeHolder;
 let input;
 let button;
+let path;
 
 buttons.push(new Button(false, 230, 20, 60, 20, closeMenu, [200, 200, 200], "Close"));
 buttons.push(new Button(false, 230, 60, 70, 20, deleteNode, [200, 200, 200], "Delete"));
@@ -117,44 +128,33 @@ function draw() {
     text(nodeTypes[nodeTypeValue].name, 0, 20);
     pop();
     textSize(17);
-    let i = 0;
-    for (let count of nodes) {
-        if (count.show) {
-            switch (count.type) {
-                case "point":
-                    fill(nodeTypes[0].color);
-                    break;
-                case "tree":
-                    fill(nodeTypes[1].color);
-                    break;
-                case "station":
-                    fill(nodeTypes[2].color);
-                    break;
-                case "busstop":
-                    fill(nodeTypes[3].color);
-                    break;
-                case "highlight":
-                    fill(nodeTypes[4].color);
-                    break;
-                case "fountain":
-                    fill(nodeTypes[5].color);
-                    break;
-                default:
-                    break;
-            }
+    nodes.forEach((value, index) => {
+        if (value.show) {
+            nodeTypes.forEach(item => {
+                if (item.name === value.type) {
+                    fill(item.color);
+                }
+            })
+        }
+        if (index === selectedNode && showMenu) {
+            rectMode(CENTER);
+            rect(value.posX, value.posY, 12, 12);
+            nodes.forEach(item => {
+                if (value.lN.find((item2) => item2 === item.id) != null) {
+                    push();
+                    noFill();
+                    strokeWeight(2);
+                    stroke(255, 0, 0);
+                    rect(item.posX, item.posY, 12, 12);
+                    pop();
+                }
+            })
 
         }
-        if (i === selectedNode && showMenu) {
-            rectMode(CENTER);
-            rect(count.posX, count.posY, 12, 12);
-        }
-        ellipse(count.posX, count.posY, 10);
-        text("#" + count.id, count.posX - 15, count.posY + 15);
-        i++;
-    }
-    for (let count of buttons) {
-        count.show();
-    }
+        ellipse(value.posX, value.posY, 10);
+        text("#" + value.id, value.posX - 15, value.posY + 15);
+    })
+    buttons.forEach(item => item.show());
     ways.forEach((value, index) => {
         value.showWay();
         if (value.idList.length === 1) {
@@ -260,14 +260,6 @@ function mouseClicked() {
                             break;
                         }
                     }
-                    // if (wayMatched2 != null) { //joining two ways together
-                    //     if (ways[wayMatched2].idList.findIndex(item => item === nodes[i].id) === ways[wayMatched2].idList.length - 1) {
-                    //         ways[wayMatched].idList = ways[wayMatched].idList.concat(ways[wayMatched2].idList.reverse());
-                    //     } else {
-                    //         ways[wayMatched].idList = ways[wayMatched].idList.concat(ways[wayMatched2].idList);
-                    //     }
-                    //     ways.splice(wayMatched2, 1);
-                    // } else {
                     if (ways[wayMatched].idList.findIndex(item => item === nodes[selectedNode].id) === 0) {
                         console.log("adding node at start");
                         ways[wayMatched].addNode(nodes[i], false);
@@ -393,6 +385,13 @@ function keyPressed() {
     if (showMenu && keyCode === 46) {
         deleteNode();
     }
+    if (showMenu && keyCode === 83) {
+        path = new Pathfinder("navi", nodes[selectedNode].id);
+    }
+    if (showMenu && keyCode === 83 && path != null) {
+        path.addStop(nodes[selectedNode].id)
+    }
+    // console.log(keyCode);
 }
 
 function updateLN() {
@@ -406,12 +405,16 @@ function updateLN() {
         }
         for (let count of wayMatched) {
             let itemPos = ways[count].idList.findIndex(value => value === item.id);
+            // console.log(itemPos + ":" + item.id + ":" + wayMatched);
             if (itemPos === 0) {
+                console.log(itemPos + ":" + item.id + ":" + wayMatched);
                 item.lN.push(ways[count].idList[itemPos + 1]);
             } else if (itemPos > 0 && itemPos < ways[count].idList.length - 1) {
+                console.log(itemPos + ":" + item.id + ":" + wayMatched);
                 item.lN.push(ways[count].idList[itemPos - 1]);
                 item.lN.push(ways[count].idList[itemPos + 1]);
-            } else if (itemPos === ways[count].idList[ways[count].idList.length - 1]) {
+            } else if (itemPos === ways[count].idList.length - 1) {
+                console.log(itemPos + ":" + item.id + ":" + wayMatched);
                 item.lN.push(ways[count].idList[itemPos - 1]);
             }
         }
